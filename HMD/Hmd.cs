@@ -24,15 +24,15 @@ namespace HMD
         {
             base.OnInitialize();
 
-            Sight = 4;
+            Sight = 3;
             Barrel = 3;
             MiscAttachment = 3;
         }
 
         public override void OnShoot(GameObject target, ref float damage)
         {
-            Sight = 0;
-            Timing.In(x => Sight = 4, FireRate);
+            Sight = 4;
+            Timing.In(x => Sight = 3, FireRate);
             
             damage = ShotDamage;
 
