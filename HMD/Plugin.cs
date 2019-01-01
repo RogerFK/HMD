@@ -18,11 +18,6 @@ namespace HMD
         )]
     public class Plugin : Smod2.Plugin
     {
-        internal static int[] lockElevator;
-        internal static int lockWarhead;
-        internal static Dictionary<Door, int> lockDoor;
-        internal static Dictionary<Door, bool> lockDoorStatus;
-
         public override void Register()
         {
             Timing.Init(this);
