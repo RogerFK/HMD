@@ -8,7 +8,6 @@ using Smod2.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace scp4aiur
 {
@@ -18,78 +17,29 @@ namespace scp4aiur
     internal class Timing : IEventHandlerUpdate, IEventHandlerRoundRestart
     {
         private static Action<string> log;
-        private static bool multiThreaded;
 
-        private static object jobAccess;
         private static int jobId;
         private static Dictionary<int, QueueItem> jobs;
 
-        private static List<int> roundJobs;
-
-        public static void Init(Smod2.Plugin plugin, Priority priority = Priority.Normal, bool threaded = true)
+        public static void Init(Smod2.Plugin plugin, Priority priority = Priority.Normal)
         {
-            multiThreaded = threaded;
             log = plugin.Info;
-
-            jobAccess = new object();
-            jobId = int.MinValue;
-
-            jobs = new Dictionary<int, QueueItem>();
-            roundJobs = new List<int>();
-
             plugin.AddEventHandlers(new Timing(), priority);
+
+            jobId = int.MinValue;
+            jobs = new Dictionary<int, QueueItem>();
         }
 
         /// <summary>
         /// Queues a job.
         /// </summary>
         /// <param name="item">Job to queue.</param>
-        /// <param name="persistThroughRound"></param>
-        private static int Queue(QueueItem item, bool persistThroughRound)
+        private static int Queue(QueueItem item)
         {
             int id = jobId++;
-            lock (jobAccess)
-            {
-                jobs.Add(id, item);
-            }
-            if (!persistThroughRound)
-            {
-                roundJobs.Add(id);
-            }
+            jobs.Add(id, item);
 
             return id;
-        }
-
-        /// <summary>
-        /// Queues a job for the next tick.
-        /// </summary>
-        /// <param name="action">Job to execute.</param>
-        /// <param name="persistThroughRound">If the timer should auto dispose at the end of a round.</param>
-        public static int Next(Action action, bool persistThroughRound = false)
-        {
-            return Queue(new NextTickQueue(action, multiThreaded), persistThroughRound);
-        }
-
-        /// <summary>
-        /// Queues a job to run in a certain amount of ticks.
-        /// </summary>
-        /// <param name="action">Job to execute.</param>
-        /// <param name="ticks">Number of ticks to wait.</param>
-        /// <param name="persistThroughRound">If the timer should auto dispose at the end of a round.</param>
-        public static int InTicks(Action action, int ticks, bool persistThroughRound = false)
-        {
-            return Queue(new AfterTicksQueue(action, ticks, multiThreaded), persistThroughRound);
-        }
-
-        /// <summary>
-        /// Queues a job to run in a certain amount of seconds
-        /// </summary>
-        /// <param name="action">Job to execute.</param>
-        /// <param name="seconds">Number of seconds to wait.</param>
-        /// <param name="persistThroughRound">If the timer should auto dispose at the end of a round.</param>
-        public static int In(Action<float> action, float seconds, bool persistThroughRound = false)
-        {
-            return Queue(new TimerQueue(action, seconds, multiThreaded), persistThroughRound);
         }
 
         /// <summary>
@@ -98,10 +48,36 @@ namespace scp4aiur
         /// <param name="id">ID of the job to remove.</param>
         public static bool Remove(int id)
         {
-            lock (jobAccess)
-            {
-                return jobs.Remove(id);
-            }
+            return jobs.Remove(id);
+        }
+
+        /// <summary>
+        /// Queues a job for the next tick.
+        /// </summary>
+        /// <param name="action">Job to execute.</param>
+        public static int Next(Action action, bool persist = false)
+        {
+            return Queue(new NextTickQueue(action, persist));
+        }
+
+        /// <summary>
+        /// Queues a job to run in a certain amount of ticks.
+        /// </summary>
+        /// <param name="action">Job to execute.</param>
+        /// <param name="ticks">Number of ticks to wait.</param>
+        public static int InTicks(Action action, int ticks, bool persist = false)
+        {
+            return Queue(new AfterTicksQueue(action, ticks, persist));
+        }
+
+        /// <summary>
+        /// Queues a job to run in a certain amount of seconds
+        /// </summary>
+        /// <param name="action">Job to execute.</param>
+        /// <param name="seconds">Number of seconds to wait.</param>
+        public static int In(Action<float> action, float seconds, bool persist = false)
+        {
+            return Queue(new TimerQueue(action, seconds, persist));
         }
 
         /// <summary>
@@ -111,16 +87,10 @@ namespace scp4aiur
         /// <param name="ev"></param>
         public void OnUpdate(UpdateEvent ev)
         {
-            KeyValuePair<int, QueueItem>[] threadSafeJobs;
-            lock (jobAccess)
-            {
-                threadSafeJobs = jobs.Where(x => x.Value.RunThisTick()).ToArray();
-            }
-
-            foreach (KeyValuePair<int, QueueItem> job in threadSafeJobs)
+            foreach (KeyValuePair<int, QueueItem> job in jobs.Where(x => x.Value.RunThisTick()).ToArray())
             {
                 job.Value.Run();
-                Remove(job.Key);
+                jobs.Remove(job.Key);
             }
         }
 
@@ -131,46 +101,30 @@ namespace scp4aiur
         /// <param name="ev"></param>
         public void OnRoundRestart(RoundRestartEvent ev)
         {
-            foreach (int job in roundJobs)
+            foreach (KeyValuePair<int, QueueItem> job in jobs.Where(x => !x.Value.RoundPersist).ToArray())
             {
-                Remove(job);
+                jobs.Remove(job.Key);
             }
-
-            roundJobs.Clear();
         }
 
         private abstract class QueueItem
         {
             private readonly string name;
-            private readonly Action runAction;
 
             protected Action action;
 
             public Exception Exception { get; protected set; }
+            public bool RoundPersist { get; }
 
-            protected QueueItem(string jobName, bool multiThreaded)
+            protected QueueItem(bool persist, string jobName)
             {
+                RoundPersist = persist;
                 name = jobName;
-
-                if (multiThreaded)
-                {
-                    Thread runThread = new Thread(SafeRun);
-                    runAction = () => runThread.Start();
-                }
-                else
-                {
-                    runAction = SafeRun;
-                }
             }
 
             public abstract bool RunThisTick();
 
             public void Run()
-            {
-                runAction();
-            }
-
-            private void SafeRun()
             {
                 try
                 {
@@ -185,7 +139,7 @@ namespace scp4aiur
 
         private class NextTickQueue : QueueItem
         {
-            public NextTickQueue(Action jobAction, bool threaded) : base("next-tick", threaded)
+            public NextTickQueue(Action jobAction, bool persist) : base(persist, "next-tick")
             {
                 action = jobAction;
             }
@@ -200,7 +154,7 @@ namespace scp4aiur
         {
             private int ticksLeft;
 
-            public AfterTicksQueue(Action jobAction, int ticks, bool threaded) : base("after-ticks", threaded)
+            public AfterTicksQueue(Action jobAction, int ticks, bool persist) : base(persist, "after-ticks")
             {
                 action = jobAction;
                 ticksLeft = ticks;
@@ -216,7 +170,7 @@ namespace scp4aiur
         {
             private float timeLeft;
 
-            public TimerQueue(Action<float> jobAction, float time, bool threaded) : base("timer", threaded)
+            public TimerQueue(Action<float> jobAction, float time, bool persist) : base(persist, "timer")
             {
                 action = () => jobAction(timeLeft);
                 timeLeft = time;
