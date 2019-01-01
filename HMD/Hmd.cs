@@ -29,7 +29,7 @@ namespace HMD
             MiscAttachment = 3;
         }
 
-        public override void OnShoot(GameObject target, ref float damage)
+        protected override void OnValidShoot(GameObject target, ref float damage)
         {
             Sight = 4;
             Timing.In(x => Sight = 3, FireRate);
