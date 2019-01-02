@@ -13,6 +13,7 @@ namespace HMD
     {
         private const int WorldMask = 1207976449;
         private const int PlayerMask = 1208246273;
+        private const float GlitchLength = 1.9f;
 
         private bool overCharged;
 
@@ -20,7 +21,7 @@ namespace HMD
         public override int MagazineCapacity => Plugin.magazine;
         public override float FireRate => Plugin.fireRate;
 
-        public float DoubleDropWindow => Plugin.overChargeable ? 0.25f : 0;
+        public float DoubleDropWindow => Plugin.overChargeable ? Plugin.doubleDropTime : 0;
         public bool OnDoubleDrop()
         {
             overCharged = !overCharged;
@@ -52,44 +53,83 @@ namespace HMD
             target.GetComponent<CharacterClassManager>().connectionToClient.SendWriter(writer, 0);
         }
 
+        private void OverchargeDetonate(WeaponManager weps, Vector3 hit)
+        {
+            foreach (GameObject player in PlayerManager.singleton.players.Except(new[] { PlayerObject })
+                .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit) < Plugin.overChargeRadius &&
+                            weps.GetShootPermission(y.GetComponent<CharacterClassManager>())))
+            {
+                player.GetComponent<PlayerStats>().HurtPlayer(new PlayerStats.HitInfo(
+                    Plugin.overChargeDamage,
+                    PlayerObject.GetComponent<NicknameSync>().myNick + " (" +
+                    PlayerObject.GetComponent<CharacterClassManager>().SteamId + ")",
+                    DamageTypes.Tesla,
+                    PlayerObject.GetComponent<QueryProcessor>().PlayerId
+                ), player);
+
+                if (Plugin.overCharageNukeEffect)
+                {
+                    TargetShake(player);
+                }
+            }
+        }
+
         protected override void OnValidShoot(GameObject target, ref float damage)
         {
             WeaponManager weps = PlayerObject.GetComponent<WeaponManager>();
+            Transform cam = PlayerObject.GetComponent<Scp049PlayerScript>().plyCam.transform;
+
+            Ray ray = new Ray(cam.position, cam.forward);
+            Physics.Raycast(cam.position + cam.forward, cam.forward, out RaycastHit playerHit, PlayerMask);
+            HitboxIdentity hitbox = playerHit.collider?.GetComponent<HitboxIdentity>();
+
             if (overCharged)
             {
-                damage = 0;
+                damage = Plugin.tagDamage;
 
-                Transform cam = PlayerObject.GetComponent<Scp049PlayerScript>().plyCam.transform;
-                Ray ray = new Ray(cam.position, cam.forward);
-                Physics.Raycast(cam.position + cam.forward, cam.forward, out RaycastHit playerHit, PlayerMask);
-
-                if (playerHit.collider.GetComponent<HitboxIdentity>() == null && Physics.Raycast(ray, out RaycastHit hit, 500f, WorldMask))
+                if (hitbox != null)
                 {
                     Timing.In(x =>
                     {
-                        foreach (GameObject player in PlayerManager.singleton.players.Except(new[] {PlayerObject})
-                            .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit.point) < Plugin.overChargeRadius &&
-                                        weps.GetShootPermission(y.GetComponent<CharacterClassManager>())))
+                        OverchargeDetonate(weps, target.GetComponent<PlyMovementSync>().position);
+                        if (weps.GetShootPermission(target.GetComponent<CharacterClassManager>()))
                         {
-                            player.GetComponent<PlayerStats>().HurtPlayer(new PlayerStats.HitInfo(
-                                Plugin.overChargeDamage,
-                                PlayerObject.GetComponent<NicknameSync>().myNick + " (" +
-                                PlayerObject.GetComponent<CharacterClassManager>().SteamId + ")",
-                                DamageTypes.Tesla,
-                                PlayerObject.GetComponent<QueryProcessor>().PlayerId
-                            ), player);
-
-                            if (Plugin.overCharageNukeEffect)
+                            float glitchTime = x;
+                            for (int i = 0; i < Plugin.tagGlitches; i++)
                             {
-                                TargetShake(player);
+                                Timing.In(y => TargetShake(target), glitchTime += GlitchLength);
                             }
                         }
+                    }, Plugin.tagTime);
+                }
+                else if (Physics.Raycast(ray, out RaycastHit hit, 500f, WorldMask))
+                {
+                    Timing.In(x =>
+                    {
+                        OverchargeDetonate(weps, hit.point);
                     }, DetonateFlash(hit.point));
                 }
             }
             else
             {
-                damage = Plugin.damage;
+                switch (hitbox?.id.ToUpper())
+                {
+                    case "HEAD":
+                        damage = Plugin.headDamage;
+                        break;
+
+                    case "LEG":
+                        damage = Plugin.legDamage;
+                        break;
+
+                    case "SCP106":
+                        damage = Plugin.scp106Damage;
+                        break;
+
+                    default:
+                        damage = Plugin.bodyDamage;
+                        break;
+                }
             }
 
             

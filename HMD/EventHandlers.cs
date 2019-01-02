@@ -19,17 +19,17 @@ namespace HMD
 
         public void OnTeamRespawn(TeamRespawnEvent ev)
         {
-                Timing.Next(() =>
-                {
-                    List<Player> filteredPossibleSnipers = ev.SpawnChaos ? 
-                        ev.PlayerList :
-                        ev.PlayerList.Where(x => Plugin.mtfHmdRoles.Contains((int)x.TeamRole.Role)).ToList();
+            Timing.Next(() =>
+            {
+                List<Player> filteredPossibleSnipers = ev.SpawnChaos ? 
+                    ev.PlayerList :
+                    ev.PlayerList.Where(x => Plugin.mtfHmdRoles.Contains((int)x.TeamRole.Role)).ToList();
 
-                    if (filteredPossibleSnipers.Count > 0)
-                    {
-                        DistributeHmd(filteredPossibleSnipers, ev.SpawnChaos ? Plugin.chaosHmds : Plugin.mtfHmds);
-                    }
-                });
+                if (filteredPossibleSnipers.Count > 0)
+                {
+                    DistributeHmd(filteredPossibleSnipers, ev.SpawnChaos ? Plugin.chaosHmds : Plugin.mtfHmds);
+                }
+            });
         }
 
         private static void DistributeHmd(IReadOnlyCollection<Player> players, int count)
