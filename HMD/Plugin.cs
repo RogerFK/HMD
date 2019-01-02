@@ -79,7 +79,7 @@ namespace HMD
 
             AddConfig(new ConfigSetting("hmd_overchargeable", true, SettingType.BOOL, true, "Allows toggling of overcharge mode."));
             AddConfig(new ConfigSetting("hmd_overcharge_radius", 15f, SettingType.FLOAT, true, "Radius of the overcharge device's bodyDamage."));
-            AddConfig(new ConfigSetting("hmd_overcharge_damage", 30, SettingType.NUMERIC, true, "Damage of the overcharge device per person."));
+            AddConfig(new ConfigSetting("hmd_overcharge_damage", 30f, SettingType.FLOAT, true, "Damage of the overcharge device per person."));
             AddConfig(new ConfigSetting("hmd_overcharge_glitch", true, SettingType.BOOL, true, "Whether or not to apply the glitchy (nuke) effect to players hit by the overcharge device."));
 
             AddConfig(new ConfigSetting("hmd_tag_time", 5f, SettingType.FLOAT, true, "Time after tagging someone with overcharge to detonation."));
@@ -118,7 +118,7 @@ namespace HMD
 
             overChargeable = instance.GetConfigBool("hmd_overchargeable");
             overChargeRadius = instance.GetConfigFloat("hmd_overcharge_radius");
-            overChargeDamage = instance.GetConfigInt("hmd_overcharge_damage");
+            overChargeDamage = instance.GetConfigFloat("hmd_overcharge_damage");
             overCharageNukeEffect = instance.GetConfigBool("hmd_overcharge_glitch");
 
             tagTime = instance.GetConfigFloat("hmd_tag_time");
