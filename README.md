@@ -1,5 +1,5 @@
 # HMD
-An Smod plugin that adds a custom weapon (originally) called the Heavy Mass Driver (H.M.D), but also known as the Ballistic HID.
+An Smod plugin that adds a custom weapon (originally) called the Heavy Mass Driver (H.M.D), but also known as the Ballistic HID.  
 Uses ItemManager ID of 102.
 
 # Installation
