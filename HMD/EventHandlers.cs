@@ -15,11 +15,31 @@ namespace HMD
         public void OnRoundStart(RoundStartEvent ev)
         {
             Plugin.ReloadConfig();
+
+            foreach (int role in Plugin.roleSpawns)
+            {
+                Vector vector = ev.Server.Map.GetRandomSpawnPoint((Role)role);
+
+                Items.CreateItem(Plugin.HmdId, new Vector3(
+                        vector.x,
+                        vector.y,
+                        vector.z),
+                    Quaternion.Euler(0, 0, 0));
+            }
+
+            Pickup[] pickups = Object.FindObjectsOfType<Pickup>();
+            foreach (int item in Plugin.itemSpawns)
+            {
+                foreach (Vector3 pos in pickups.Where(x => x.info.itemId == item).Select(x => x.transform.position))
+                {
+                    Items.CreateItem(Plugin.HmdId, pos, Quaternion.Euler(0, 0, 0));
+                }
+            }
         }
 
         public void OnTeamRespawn(TeamRespawnEvent ev)
         {
-            Timing.Next(() =>
+            Timing.InTicks(() =>
             {
                 List<Player> filteredPossibleSnipers = ev.SpawnChaos ? 
                     ev.PlayerList :
@@ -29,7 +49,7 @@ namespace HMD
                 {
                     DistributeHmd(filteredPossibleSnipers, ev.SpawnChaos ? Plugin.chaosHmds : Plugin.mtfHmds);
                 }
-            });
+            }, 2);
         }
 
         private static void DistributeHmd(IReadOnlyCollection<Player> players, int count)
@@ -39,7 +59,7 @@ namespace HMD
             {
                 Player sniper = possibleSnipers[Random.Range(0, possibleSnipers.Count)];
                 possibleSnipers.Remove(sniper);
-                sniper.GiveItem(102);
+                sniper.GiveItem(Plugin.HmdId);
 
                 if (possibleSnipers.Count == 0)
                 {

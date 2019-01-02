@@ -19,9 +19,14 @@ namespace HMD
         )]
     public class Plugin : Smod2.Plugin
     {
+        public const int HmdId = 102;
+
         private static Plugin instance;
 
         internal static float doubleDropTime;
+
+        internal static int[] roleSpawns;
+        internal static int[] itemSpawns;
 
         internal static float bodyDamage;
         internal static float headDamage;
@@ -52,6 +57,12 @@ namespace HMD
             instance = this;
 
             AddConfig(new ConfigSetting("hmd_doubledrop_time", 0.25f, SettingType.FLOAT, true, "Time that a player must double right click in order to toggle overcharge."));
+
+            AddConfig(new ConfigSetting("hmd_role_spawns", new int[0], SettingType.NUMERIC_LIST, true, "Role spawn locations where the HMD should spawn."));
+            AddConfig(new ConfigSetting("hmd_item_spawns", new[]
+            {
+                (int)ItemType.MTF_COMMANDER_KEYCARD
+            }, SettingType.NUMERIC_LIST, true, "Item spawn locations where the HMD should spawn."));
 
             AddConfig(new ConfigSetting("hmd_body_damage", 80f, SettingType.FLOAT, true, "Damage per shot of the rifle on bodies."));
             AddConfig(new ConfigSetting("hmd_head_damage", 105f, SettingType.FLOAT, true, "Damage per shot of the rifle on heads."));
@@ -89,6 +100,9 @@ namespace HMD
         public static void ReloadConfig()
         {
             doubleDropTime = instance.GetConfigFloat("hmd_doubledrop_time");
+
+            roleSpawns = instance.GetConfigIntList("hmd_role_spawns");
+            itemSpawns = instance.GetConfigIntList("hmd_item_spawns");
 
             bodyDamage = instance.GetConfigFloat("hmd_body_damage");
             headDamage = instance.GetConfigFloat("hmd_head_damage");
