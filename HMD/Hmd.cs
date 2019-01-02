@@ -3,7 +3,6 @@ using ItemManager;
 using ItemManager.Events;
 using RemoteAdmin;
 using scp4aiur;
-using Smod2;
 using Smod2.API;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -15,28 +14,21 @@ namespace HMD
         private const int WorldMask = 1207976449;
         private const int PlayerMask = 1208246273;
 
-        private bool superCharged;
-
-        private const float ShotDamage = 90f;
-        private const int Krakatoa = 15;
-        private const int SuppressedKrakatoa = 7;
-        private const float SuperChargeRadius = 15f;
-        private const float SuperChargeDamage = 30f;
+        private bool overCharged;
 
         public override ItemType DefaultItemId => ItemType.E11_STANDARD_RIFLE;
-        public override int MagazineCapacity => 5;
-        public override float FireRate => 5f;
+        public override int MagazineCapacity => Plugin.magazine;
+        public override float FireRate => Plugin.fireRate;
 
+        public float DoubleDropWindow => Plugin.overChargeable ? 0.25f : 0;
         public bool OnDoubleDrop()
         {
-            superCharged = !superCharged;
+            overCharged = !overCharged;
 
-            Sight = superCharged ? 3 : 4;
+            Sight = overCharged ? 3 : 4;
 
             return false;
         }
-
-        public float DoubleDropWindow => 0.25f;
 
         public override void OnInitialize()
         {
@@ -47,7 +39,7 @@ namespace HMD
             MiscAttachment = 3;
         }
 
-        private void TargetShake(GameObject target)
+        private static void TargetShake(GameObject target)
         {
             int rpcId = -737840022;
 
@@ -63,8 +55,10 @@ namespace HMD
         protected override void OnValidShoot(GameObject target, ref float damage)
         {
             WeaponManager weps = PlayerObject.GetComponent<WeaponManager>();
-            if (superCharged)
+            if (overCharged)
             {
+                damage = 0;
+
                 Transform cam = PlayerObject.GetComponent<Scp049PlayerScript>().plyCam.transform;
                 Ray ray = new Ray(cam.position, cam.forward);
                 Physics.Raycast(cam.position + cam.forward, cam.forward, out RaycastHit playerHit, PlayerMask);
@@ -73,30 +67,33 @@ namespace HMD
                 {
                     Timing.In(x =>
                     {
-                        foreach (GameObject player in  PlayerManager.singleton.players.Except(new[] {PlayerObject})
-                            .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit.point) < SuperChargeRadius &&
+                        foreach (GameObject player in PlayerManager.singleton.players.Except(new[] {PlayerObject})
+                            .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit.point) < Plugin.overChargeRadius &&
                                         weps.GetShootPermission(y.GetComponent<CharacterClassManager>())))
                         {
                             player.GetComponent<PlayerStats>().HurtPlayer(new PlayerStats.HitInfo(
-                                SuperChargeDamage,
+                                Plugin.overChargeDamage,
                                 PlayerObject.GetComponent<NicknameSync>().myNick + " (" +
                                 PlayerObject.GetComponent<CharacterClassManager>().SteamId + ")",
                                 DamageTypes.Tesla,
                                 PlayerObject.GetComponent<QueryProcessor>().PlayerId
                             ), player);
-                            
-                            TargetShake(player);
+
+                            if (Plugin.overCharageNukeEffect)
+                            {
+                                TargetShake(player);
+                            }
                         }
                     }, DetonateFlash(hit.point));
                 }
             }
             else
             {
-                damage = ShotDamage;
+                damage = Plugin.damage;
             }
 
             
-            int shots = Barrel == 1 ? SuppressedKrakatoa : Krakatoa;
+            int shots = Barrel == 1 ? Plugin.suppressedKrakatoa : Plugin.krakatoa;
             for (int i = 0; i < shots; i++)
             {
                 weps.CallRpcConfirmShot(false, weps.curWeapon);
