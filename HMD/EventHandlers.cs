@@ -30,7 +30,7 @@ namespace HMD
             Pickup[] pickups = Object.FindObjectsOfType<Pickup>();
             foreach (int item in Plugin.itemSpawns)
             {
-                foreach (Vector3 pos in pickups.Where(x => x.info.itemId == item).Select(x => x.transform.position))
+                foreach (Vector3 pos in pickups.Where(x => x.info.itemId == item).Select(x => x.transform.position + Vector3.up))
                 {
                     Items.CreateItem(Plugin.HmdId, pos, Quaternion.Euler(0, 0, 0));
                 }
