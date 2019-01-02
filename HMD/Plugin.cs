@@ -89,7 +89,7 @@ namespace HMD
             AddConfig(new ConfigSetting("hmd_mtf_count", 1, SettingType.NUMERIC, true, "Amount of HMDs given to MTF respawns."));
             AddConfig(new ConfigSetting("hmd_mtf_roles", new[]
             {
-                (int)Role.NTF_LIEUTENANT
+                (int)Role.NTF_COMMANDER
             }, SettingType.NUMERIC_LIST, true, "MTF roles that can receive HMDs."));
 
             Timing.Init(this);
