@@ -31,4 +31,4 @@ Place the "HMD.dll" file in your sm_plugins folder.
 | hmd_tag_glitches | Integer | 2 | Additional glitch effects to play for the tagged player when the overcharge device detonates. |
 | hmd_chaos_count | Integer | 0 | Number of HMDs to be distributed within a Chaos Insurgency respawn. |
 | hmd_mtf_count | Integer | 1 | Number of HMDs to be distributed within an MTF respawn. |
-| hmd_mtf_ranks | Integer List | 12 (MTF Commander) | Roles within MTF's ranks that should have the shotguns distributed within. |
+| hmd_mtf_ranks | Integer List | 12 (MTF Commander) | Roles within MTF's ranks that should have the HMDs distributed within. |
