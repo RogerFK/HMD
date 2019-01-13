@@ -16,12 +16,11 @@ namespace HMD
         private const float GlitchLength = 1.9f;
 
         private bool overCharged;
+        
+        public override int MagazineCapacity => HmdPlugin.Magazine;
+        public override float FireRate => HmdPlugin.FireRate;
 
-        public override ItemType DefaultItemId => ItemType.E11_STANDARD_RIFLE;
-        public override int MagazineCapacity => Plugin.magazine;
-        public override float FireRate => Plugin.fireRate;
-
-        public float DoubleDropWindow => Plugin.overChargeable ? Plugin.doubleDropTime : 0;
+        public float DoubleDropWindow => HmdPlugin.OverChargeable ? HmdPlugin.DoubleDropTime : 0;
         public bool OnDoubleDrop()
         {
             overCharged = !overCharged;
@@ -56,18 +55,18 @@ namespace HMD
         private void OverchargeDetonate(WeaponManager weps, Vector3 hit)
         {
             foreach (GameObject player in PlayerManager.singleton.players.Except(new[] { PlayerObject })
-                .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit) < Plugin.overChargeRadius &&
+                .Where(y => Vector3.Distance(y.GetComponent<PlyMovementSync>().position, hit) < HmdPlugin.OverChargeRadius &&
                             weps.GetShootPermission(y.GetComponent<CharacterClassManager>())))
             {
                 player.GetComponent<PlayerStats>().HurtPlayer(new PlayerStats.HitInfo(
-                    Plugin.overChargeDamage,
+                    HmdPlugin.OverChargeDamage,
                     PlayerObject.GetComponent<NicknameSync>().myNick + " (" +
                     PlayerObject.GetComponent<CharacterClassManager>().SteamId + ")",
                     DamageTypes.Tesla,
                     PlayerObject.GetComponent<QueryProcessor>().PlayerId
                 ), player);
 
-                if (Plugin.overCharageNukeEffect)
+                if (HmdPlugin.OverCharageNukeEffect)
                 {
                     TargetShake(player);
                 }
@@ -85,7 +84,7 @@ namespace HMD
 
             if (overCharged)
             {
-                damage = Plugin.tagDamage;
+                damage = HmdPlugin.TagDamage;
 
                 if (hitbox != null)
                 {
@@ -95,12 +94,12 @@ namespace HMD
                         if (weps.GetShootPermission(target.GetComponent<CharacterClassManager>()))
                         {
                             float glitchTime = x;
-                            for (int i = 0; i < Plugin.tagGlitches; i++)
+                            for (int i = 0; i < HmdPlugin.TagGlitches; i++)
                             {
                                 Timing.In(y => TargetShake(target), glitchTime += GlitchLength);
                             }
                         }
-                    }, Plugin.tagTime);
+                    }, HmdPlugin.TagTime);
                 }
                 else if (Physics.Raycast(ray, out RaycastHit hit, 500f, WorldMask))
                 {
@@ -115,25 +114,25 @@ namespace HMD
                 switch (hitbox?.id.ToUpper())
                 {
                     case "HEAD":
-                        damage = Plugin.headDamage;
+                        damage = HmdPlugin.HeadDamage;
                         break;
 
                     case "LEG":
-                        damage = Plugin.legDamage;
+                        damage = HmdPlugin.LegDamage;
                         break;
 
                     case "SCP106":
-                        damage = Plugin.scp106Damage;
+                        damage = HmdPlugin.Scp106Damage;
                         break;
 
                     default:
-                        damage = Plugin.bodyDamage;
+                        damage = HmdPlugin.BodyDamage;
                         break;
                 }
             }
 
             
-            int shots = Barrel == 1 ? Plugin.suppressedKrakatoa : Plugin.krakatoa;
+            int shots = Barrel == 1 ? HmdPlugin.SuppressedKrakatoa : HmdPlugin.Krakatoa;
             for (int i = 0; i < shots; i++)
             {
                 weps.CallRpcConfirmShot(false, weps.curWeapon);

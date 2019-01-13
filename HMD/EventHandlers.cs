@@ -12,15 +12,22 @@ namespace HMD
 {
     public class EventHandlers : IEventHandlerRoundStart, IEventHandlerTeamRespawn
     {
+        private readonly HmdPlugin plugin;
+
+        public EventHandlers(HmdPlugin plugin)
+        {
+            this.plugin = plugin;
+        }
+
         public void OnRoundStart(RoundStartEvent ev)
         {
-            Plugin.ReloadConfig();
+            plugin.ReloadConfig();
 
-            foreach (int role in Plugin.roleSpawns)
+            foreach (int role in plugin.RoleSpawns)
             {
                 Vector vector = ev.Server.Map.GetRandomSpawnPoint((Role)role);
 
-                Items.CreateItem(Plugin.HmdId, new Vector3(
+                plugin.Handler.CreateOfType(new Vector3(
                         vector.x,
                         vector.y,
                         vector.z),
@@ -28,11 +35,11 @@ namespace HMD
             }
 
             Pickup[] pickups = Object.FindObjectsOfType<Pickup>();
-            foreach (int item in Plugin.itemSpawns)
+            foreach (int item in plugin.ItemSpawns)
             {
                 foreach (Vector3 pos in pickups.Where(x => x.info.itemId == item).Select(x => x.transform.position + Vector3.up))
                 {
-                    Items.CreateItem(Plugin.HmdId, pos, Quaternion.Euler(0, 0, 0));
+                    plugin.Handler.CreateOfType(pos, Quaternion.Euler(0, 0, 0));
                 }
             }
         }
@@ -43,23 +50,23 @@ namespace HMD
             {
                 List<Player> filteredPossibleSnipers = ev.SpawnChaos ? 
                     ev.PlayerList :
-                    ev.PlayerList.Where(x => Plugin.mtfHmdRoles.Contains((int)x.TeamRole.Role)).ToList();
+                    ev.PlayerList.Where(x => plugin.MtfHmdRoles.Contains((int)x.TeamRole.Role)).ToList();
 
                 if (filteredPossibleSnipers.Count > 0)
                 {
-                    DistributeHmd(filteredPossibleSnipers, ev.SpawnChaos ? Plugin.chaosHmds : Plugin.mtfHmds);
+                    DistributeHmd(filteredPossibleSnipers, ev.SpawnChaos ? plugin.ChaosHmds : plugin.MtfHmds);
                 }
             }, 2);
         }
 
-        private static void DistributeHmd(IReadOnlyCollection<Player> players, int count)
+        private void DistributeHmd(IReadOnlyCollection<Player> players, int count)
         {
             List<Player> possibleSnipers = players.ToList();
             for (int i = 0; i < count; i++)
             {
                 Player sniper = possibleSnipers[Random.Range(0, possibleSnipers.Count)];
                 possibleSnipers.Remove(sniper);
-                sniper.GiveItem(Plugin.HmdId);
+                plugin.Handler.Create(((GameObject) sniper.GetGameObject()).GetComponent<Inventory>());
 
                 if (possibleSnipers.Count == 0)
                 {

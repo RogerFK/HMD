@@ -1,4 +1,5 @@
 ﻿using ItemManager;
+using ItemManager.Utilities;
 using scp4aiur;
 using Smod2.API;
 using Smod2.Attributes;
@@ -14,47 +15,48 @@ namespace HMD
         name = "HMD",
         SmodMajor = 3,
         SmodMinor = 2,
-        SmodRevision = 0,
-        version = "1.0.0"
+        SmodRevision = 2,
+        version = "1.0.1"
         )]
-    public class Plugin : Smod2.Plugin
+    public class HmdPlugin : Smod2.Plugin
     {
         public const int HmdId = 102;
 
-        private static Plugin instance;
+        public static HmdPlugin Instance { get; private set; }
+        public CustomWeaponHandler<Hmd> Handler { get; private set; }
 
-        internal static float doubleDropTime;
+        public static float DoubleDropTime { get; private set; }
 
-        internal static int[] roleSpawns;
-        internal static int[] itemSpawns;
+        public int[] RoleSpawns { get; private set; }
+        public int[] ItemSpawns { get; private set; }
 
-        internal static float bodyDamage;
-        internal static float headDamage;
-        internal static float legDamage;
-        internal static float scp106Damage;
-        internal static float tagDamage;
+        public static float BodyDamage { get; private set; }
+        public static float HeadDamage { get; private set; }
+        public static float LegDamage { get; private set; }
+        public static float Scp106Damage { get; private set; }
+        public static float TagDamage { get; private set; }
 
-        internal static float fireRate;
-        internal static int magazine;
+        public static float FireRate { get; private set; }
+        public static int Magazine { get; private set; }
 
-        internal static int krakatoa;
-        internal static int suppressedKrakatoa;
+        public static int Krakatoa { get; private set; }
+        public static int SuppressedKrakatoa { get; private set; }
 
-        internal static bool overChargeable;
-        internal static float overChargeRadius;
-        internal static float overChargeDamage;
-        internal static bool overCharageNukeEffect;
+        public static bool OverChargeable { get; private set; }
+        public static float OverChargeRadius { get; private set; }
+        public static float OverChargeDamage { get; private set; }
+        public static bool OverCharageNukeEffect { get; private set; }
 
-        internal static float tagTime;
-        internal static int tagGlitches;
+        public static float TagTime { get; private set; }
+        public static int TagGlitches { get; private set; }
 
-        internal static int chaosHmds;
-        internal static int mtfHmds;
-        internal static int[] mtfHmdRoles;
+        public int ChaosHmds { get; private set; }
+        public int MtfHmds { get; private set; }
+        public int[] MtfHmdRoles { get; private set; }
 
         public override void Register()
         {
-            instance = this;
+            Instance = this;
 
             AddConfig(new ConfigSetting("hmd_doubledrop_time", 0.25f, SettingType.FLOAT, true, "Time that a player must double right click in order to toggle overcharge."));
 
@@ -93,43 +95,58 @@ namespace HMD
             }, SettingType.NUMERIC_LIST, true, "MTF roles that can receive HMDs."));
 
             Timing.Init(this);
-            Items.RegisterWeapon<Hmd>(102, GetConfigInt("hmd_reserve_ammo"));
-            AddEventHandlers(new EventHandlers(), Priority.Low);
+            Handler = new CustomWeaponHandler<Hmd>(102)
+            {
+                AmmoName = "Heavy Masses",
+                DroppedAmmoCount = 5,
+                DefaultType = ItemType.E11_STANDARD_RIFLE
+            };
+            ReloadConfig();
+            Handler.Register();
+            AddEventHandlers(new EventHandlers(this), Priority.Low);
         }
 
-        public static void ReloadConfig()
+        public void ReloadConfig()
         {
-            doubleDropTime = instance.GetConfigFloat("hmd_doubledrop_time");
+            DoubleDropTime = GetConfigFloat("hmd_doubledrop_time");
 
-            roleSpawns = instance.GetConfigIntList("hmd_role_spawns");
-            itemSpawns = instance.GetConfigIntList("hmd_item_spawns");
+            RoleSpawns = GetConfigIntList("hmd_role_spawns");
+            ItemSpawns = GetConfigIntList("hmd_item_spawns");
 
-            bodyDamage = instance.GetConfigFloat("hmd_body_damage");
-            headDamage = instance.GetConfigFloat("hmd_head_damage");
-            legDamage = instance.GetConfigFloat("hmd_leg_damage");
-            scp106Damage = instance.GetConfigFloat("hmd_106_damage");
-            tagDamage = instance.GetConfigFloat("hmd_tag_damage");
+            BodyDamage = GetConfigFloat("hmd_body_damage");
+            HeadDamage = GetConfigFloat("hmd_head_damage");
+            LegDamage = GetConfigFloat("hmd_leg_damage");
+            Scp106Damage = GetConfigFloat("hmd_106_damage");
+            TagDamage = GetConfigFloat("hmd_tag_damage");
 
-            fireRate = instance.GetConfigFloat("hmd_fire_rate");
-            magazine = instance.GetConfigInt("hmd_magazine");
+            FireRate = GetConfigFloat("hmd_fire_rate");
+            Magazine = GetConfigInt("hmd_magazine");
+            Handler.DefaultReserveAmmo = GetConfigInt("hmd_reserve_ammo");
 
-            krakatoa = instance.GetConfigInt("hmd_krakatoa");
-            suppressedKrakatoa = instance.GetConfigInt("hmd_suppressed_krakatoa");
+            Krakatoa = GetConfigInt("hmd_krakatoa");
+            SuppressedKrakatoa = GetConfigInt("hmd_suppressed_krakatoa");
 
-            overChargeable = instance.GetConfigBool("hmd_overchargeable");
-            overChargeRadius = instance.GetConfigFloat("hmd_overcharge_radius");
-            overChargeDamage = instance.GetConfigFloat("hmd_overcharge_damage");
-            overCharageNukeEffect = instance.GetConfigBool("hmd_overcharge_glitch");
+            OverChargeable = GetConfigBool("hmd_overchargeable");
+            OverChargeRadius = GetConfigFloat("hmd_overcharge_radius");
+            OverChargeDamage = GetConfigFloat("hmd_overcharge_damage");
+            OverCharageNukeEffect = GetConfigBool("hmd_overcharge_glitch");
 
-            tagTime = instance.GetConfigFloat("hmd_tag_time");
-            tagGlitches = instance.GetConfigInt("hmd_tag_glitches");
+            TagTime = GetConfigFloat("hmd_tag_time");
+            TagGlitches = GetConfigInt("hmd_tag_glitches");
 
-            chaosHmds = instance.GetConfigInt("hmd_chaos_count");
-            mtfHmds = instance.GetConfigInt("hmd_mtf_count");
-            mtfHmdRoles = instance.GetConfigIntList("hmd_mtf_roles");
+            ChaosHmds = GetConfigInt("hmd_chaos_count");
+            MtfHmds = GetConfigInt("hmd_mtf_count");
+            MtfHmdRoles = GetConfigIntList("hmd_mtf_roles");
         }
 
-        public override void OnEnable() { }
-        public override void OnDisable() { }
+        public override void OnEnable()
+        {
+            Info("HMD enabled.");
+        }
+
+        public override void OnDisable()
+        {
+            Info("HMD disabled.");
+        }
     }
 }
