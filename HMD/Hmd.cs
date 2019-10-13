@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using ItemManager;
 using ItemManager.Events;
 using RemoteAdmin;
@@ -16,7 +17,7 @@ namespace HMD
         private const float GlitchLength = 1.9f;
 
         private bool overCharged;
-        
+
         public override int MagazineCapacity => HmdPlugin.Magazine;
         public override float FireRate => HmdPlugin.FireRate;
 
@@ -77,10 +78,10 @@ namespace HMD
         {
             WeaponManager weps = PlayerObject.GetComponent<WeaponManager>();
             Transform cam = PlayerObject.GetComponent<Scp049PlayerScript>().plyCam.transform;
-
             Ray ray = new Ray(cam.position, cam.forward);
             Physics.Raycast(cam.position + cam.forward, cam.forward, out RaycastHit playerHit, PlayerMask);
             HitboxIdentity hitbox = playerHit.collider?.GetComponent<HitboxIdentity>();
+            damage = 0;
 
             if (overCharged)
             {
@@ -111,31 +112,51 @@ namespace HMD
             }
             else
             {
-                switch (hitbox?.id.ToUpper())
+                PlayerStats stats = target.GetComponent<PlayerStats>();
+                float damageTmp;
+                if (target.GetComponent<CharacterClassManager>().curClass == (int)Role.SCP_106)
                 {
-                    case "HEAD":
-                        damage = HmdPlugin.HeadDamage;
-                        break;
-
-                    case "LEG":
-                        damage = HmdPlugin.LegDamage;
-                        break;
-
-                    case "SCP106":
-                        damage = HmdPlugin.Scp106Damage;
-                        break;
-
-                    default:
-                        damage = HmdPlugin.BodyDamage;
-                        break;
+                    damageTmp = HmdPlugin.Scp106Damage;
                 }
+                else
+                {
+                    damageTmp = HitHandler(hitbox);
+                }
+
+                stats.HurtPlayer(
+                        new PlayerStats.HitInfo(
+                            damageTmp,
+                            PlayerObject.GetComponent<NicknameSync>().myNick + " (" + PlayerObject.GetComponent<CharacterClassManager>().SteamId + ")",
+                            DamageTypes.E11StandardRifle,
+                            PlayerObject.GetComponent<QueryProcessor>().PlayerId
+                        ),
+                        target);
             }
 
-            
+
             int shots = Barrel == 1 ? HmdPlugin.SuppressedKrakatoa : HmdPlugin.Krakatoa;
             for (int i = 0; i < shots; i++)
             {
                 weps.CallRpcConfirmShot(false, weps.curWeapon);
+            }
+        }
+
+        private float HitHandler(HitboxIdentity hitbox)
+        {
+            switch (hitbox?.id.ToUpper())
+            {
+                case "HEAD":
+                    return HmdPlugin.HeadDamage;
+
+                case "LEG":
+                    return HmdPlugin.LegDamage;
+
+                    // left here but probably unused / not the right string
+                case "SCP106":
+                    return HmdPlugin.Scp106Damage;
+
+                default:
+                    return HmdPlugin.BodyDamage;
             }
         }
 
@@ -146,12 +167,12 @@ namespace HMD
             const float throwForce = 0;
 
             GrenadeManager component1 = PlayerObject.GetComponent<GrenadeManager>();
-            Grenade component2 = Object.Instantiate(component1.availableGrenades[id].grenadeInstance).GetComponent<Grenade>();
+            Grenade component2 = UnityEngine.Object.Instantiate(component1.availableGrenades[id].grenadeInstance).GetComponent<Grenade>();
             component2.id = PlayerObject.GetComponent<QueryProcessor>().PlayerId + ":" + (component1.smThrowInteger + 4096);
             GrenadeManager.grenadesOnScene.Add(component2);
             component2.SyncMovement(component1.availableGrenades[id].GetStartPos(PlayerObject), (PlayerObject.GetComponent<Scp049PlayerScript>().plyCam.transform.forward + Vector3.up / 4f).normalized * throwForce, Quaternion.Euler(component1.availableGrenades[id].startRotation), component1.availableGrenades[id].angularVelocity);
             component1.CallRpcThrowGrenade(id, PlayerObject.GetComponent<QueryProcessor>().PlayerId, component1.smThrowInteger++ + 4096, dir, true, pos, false, 0);
-            
+
             return component1.availableGrenades[id].timeUnitilDetonation;
         }
     }
